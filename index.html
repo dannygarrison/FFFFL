@@ -2408,10 +2408,12 @@ const TAB_IDS = [...document.querySelectorAll('main section')].map(s=>s.id);
 function switchTab(tabName, opts){
   if(!TAB_IDS.includes(tabName)) tabName = 'overview';
   // Reflected in the URL so a refresh (or a shared link) reopens the same tab.
+  // Wrapped because replaceState throws on file:// — the tab still has to switch.
   if(!(opts && opts.fromHash)){
-    const hash = tabName === 'overview' ? ' ' : '#' + tabName;
-    history.replaceState(null, '', tabName === 'overview'
-      ? location.pathname + location.search : hash);
+    try{
+      history.replaceState(null, '', tabName === 'overview'
+        ? location.pathname + location.search : '#' + tabName);
+    }catch(err){ /* not served over http — skip the URL update */ }
   }
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
   document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active', s.id===tabName));

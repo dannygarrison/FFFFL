@@ -2440,7 +2440,10 @@ document.querySelectorAll('.home-tile[data-tab]').forEach(btn=>{
 document.getElementById('brandHome').addEventListener('click', ()=> switchTab('overview'));
 
 // Open whatever tab the URL points at, and follow back/forward.
-function tabFromHash(){ return (location.hash || '').replace('#','').split('/')[0] || 'overview'; }
+function tabFromHash(){
+  if(window.__FFFFL_POST || /^\/blog\//.test(location.pathname)) return 'blog';
+  return (location.hash || '').replace('#','').split('/')[0] || 'overview';
+}
 window.addEventListener('hashchange', ()=>{ switchTab(tabFromHash(), { fromHash:true }); openPostFromHash(); });
 
 // ---------- SPLASH ----------
@@ -2613,10 +2616,18 @@ function postSlug(p){
 }
 
 // Open a post from the hash: expand it and scroll it into view.
-function openPostFromHash(){
+function targetPostSlug(){
+  if(window.__FFFFL_POST) return window.__FFFFL_POST;
+  const path = location.pathname.match(/^\/blog\/([^/]+)\/?$/);
+  if(path) return path[1];
   const parts = (location.hash || '').replace('#','').split('/');
-  if(parts[0] !== 'blog' || !parts[1]) return;
-  const el = document.getElementById('post-' + parts[1]);
+  return parts[0] === 'blog' ? (parts[1] || '') : '';
+}
+
+function openPostFromHash(){
+  const slug = targetPostSlug();
+  if(!slug) return;
+  const el = document.getElementById('post-' + slug);
   if(!el) return;
   const bodyEl = el.querySelector('.post-body');
   if(bodyEl && bodyEl.classList.contains('truncated')){
@@ -2656,7 +2667,7 @@ function renderPosts(posts){
 
   document.querySelectorAll('.post-share').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
-      const url = `${location.origin}${location.pathname}#blog/${e.target.dataset.slug}`;
+      const url = `${location.origin}/blog/${e.target.dataset.slug}`;
       try{
         await navigator.clipboard.writeText(url);
         e.target.textContent = 'Link copied';
@@ -2686,7 +2697,7 @@ function renderPosts(posts){
 
 async function loadPosts(){
   try{
-    const res = await fetch('posts.json', { cache:'no-store' });
+    const res = await fetch('/posts.json', { cache:'no-store' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     renderPosts(Array.isArray(data) ? data : (data.posts || []));

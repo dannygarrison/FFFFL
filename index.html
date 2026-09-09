@@ -400,7 +400,7 @@
   /* "## 1. Whit" in a post body becomes a styled entry header. */
   .post-h{
     white-space:normal; display:flex; flex-direction:column; align-items:flex-start; gap:5px;
-    margin:26px 0 10px; padding-top:16px; border-top:1px solid var(--line);
+    margin:18px 0 6px; padding-top:12px; border-top:1px solid var(--line);
   }
   .post-h:first-child{margin-top:0; padding-top:0; border-top:none;}
   .post-h-top{display:flex; align-items:baseline; gap:11px;}
@@ -410,6 +410,31 @@
 
   /* Roster graphics inside a post body. Authors write [roster]QB: Name[/roster] in
      posts.json; the renderer turns each line into a row of position-colored pills. */
+  .lineup-game{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:14px 16px; margin:4px 0 6px;
+  }
+  .lineup-game-title{
+    font-family:'Archivo Black', sans-serif; font-size:15px; color:var(--text);
+    margin-bottom:10px;
+  }
+  .lineup-match{
+    font-family:'Archivo Black', sans-serif; font-size:17px; color:var(--text);
+    border-top:1px solid var(--line); margin-top:12px; padding-top:12px;
+  }
+  .lineup-match:first-child{border-top:0; margin-top:0; padding-top:0;}
+  .lineup-mgr{margin-top:8px;}
+  .lineup-mgr-name{
+    font-family:'Work Sans', sans-serif; font-weight:700; font-size:13px;
+    color:var(--text); margin-bottom:4px;
+  }
+  .lineup-line{
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:6px;
+    font-size:13px; margin:3px 0;
+  }
+  .lineup-label{color:var(--muted); flex:0 0 auto; min-width:74px;}
+  .lineup-none{color:var(--muted); font-style:italic;}
+  .lineup-note{color:var(--muted); font-size:13px; font-style:italic;}
   .roster-block{white-space:normal; margin:14px 0 6px; display:flex; flex-direction:column; gap:8px;}
   .roster-row{
     display:flex; flex-wrap:nowrap; gap:5px; align-items:center; color:var(--muted);
@@ -424,6 +449,13 @@
   .roster-row[data-pos="FLEX"]{color:#E6E9EF;}
   .roster-row[data-pos="K"]{color:#A3E635;}
   .roster-row[data-pos="DEF"]{color:#FBBF24;}
+  .roster-pill[data-pos="QB"]{color:#4C7DFF;}
+  .roster-pill[data-pos="RB"]{color:#5EE9A6;}
+  .roster-pill[data-pos="WR"]{color:#F97316;}
+  .roster-pill[data-pos="TE"]{color:#F472B6;}
+  .roster-pill[data-pos="FLEX"]{color:#E6E9EF;}
+  .roster-pill[data-pos="K"]{color:#A3E635;}
+  .roster-pill[data-pos="DEF"]{color:#FBBF24;}
   .roster-pos{
     font-family:'Press Start 2P'; font-size:8px; letter-spacing:1px;
     flex:0 0 28px; line-height:1.4;
@@ -2500,6 +2532,50 @@ function renderRosterBlocks(escaped){
   });
 }
 
+// [lineup] blocks: one NFL game, then each manager's starters and bench.
+//   Game: Jess vs Danny
+//   Jess
+//   S: Mike Evans|WR|SF
+//   B: none
+// Use "Note:" for a game where neither side has anyone.
+// A bare "none" renders as muted text rather than a pill.
+function renderLineupBlocks(escaped){
+  return escaped.replace(/\[lineup\]([\s\S]*?)\[\/lineup\]/g, (_, inner) => {
+    const lines = inner.split('\n').map(l => l.trim()).filter(Boolean);
+    let html = '', open = false;
+    const pills = rest => {
+      if(!rest || rest.toLowerCase() === 'none') return '<span class="lineup-none">none</span>';
+      return rest.split(',').map(chunk => {
+        const [name, pos, pro] = chunk.split('|').map(s => (s||'').trim());
+        const label = pro ? `${name} (${pos}, ${pro})` : (pos ? `${name} (${pos})` : name);
+        return `<span class="roster-pill" data-pos="${(pos||'FLEX').toUpperCase()}">${label}</span>`;
+      }).join('');
+    };
+    lines.forEach(line => {
+      const [key, ...restArr] = line.split(':');
+      const rest = restArr.join(':').trim();
+      const k = key.trim().toLowerCase();
+      if(k === 'game'){
+        html += `<div class="lineup-game-title">${rest}</div>`;
+      } else if(k === 'match'){
+        if(open){ html += '</div>'; open = false; }
+        html += `<div class="lineup-match">${rest}</div>`;
+      } else if(k === 'note'){
+        html += `<div class="lineup-note">${rest}</div>`;
+      } else if(k === 's' || k === 'b'){
+        const label = k === 's' ? 'Starters:' : 'Bench:';
+        html += `<div class="lineup-line"><span class="lineup-label">${label}</span>${pills(rest)}</div>`;
+      } else {
+        if(open) html += '</div>';
+        html += `<div class="lineup-mgr"><div class="lineup-mgr-name">${line}</div>`;
+        open = true;
+      }
+    });
+    if(open) html += '</div>';
+    return `<div class="lineup-game">${html}</div>`;
+  });
+}
+
 function renderPosts(posts){
   if(!posts.length){
     postsList.innerHTML = '<div class="empty-state">No posts yet.</div>';
@@ -2509,7 +2585,7 @@ function renderPosts(posts){
   postsList.innerHTML = posts.map((p, i) => {
     const escaped = escapeHTML(p.body || '');
     const isLong = escaped.length > 380;
-    const body = renderRosterBlocks(renderHeadings(escaped));
+    const body = renderLineupBlocks(renderRosterBlocks(renderHeadings(escaped)));
     return `
     <div class="post">
       ${p.type ? `<div class="post-type">${escapeHTML(p.type)}</div>` : ''}

@@ -480,7 +480,14 @@
   .post-json-wrap.open{display:block;}
   .post-json-wrap code{font-size:12px; color:var(--text);}
   #postJson{min-height:150px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.5;}
+  .post{scroll-margin-top:calc(var(--header-h, 120px) + 14px);}
   .post-actions{margin-top:10px; display:flex; gap:18px; align-items:center;}
+  .post-share{
+    font-family:'Work Sans', sans-serif; font-weight:600; font-size:12px;
+    background:none; border:1px solid var(--line); border-radius:5px;
+    color:var(--muted); padding:6px 11px; cursor:pointer;
+  }
+  .post-share:hover{color:var(--text); border-color:var(--blue);}
   .post-readmore{background:none; border:none; color:var(--blue); font-size:13px; cursor:pointer; padding:0; font-weight:600; text-decoration:underline;}
   .post-del{background:none; border:none; color:var(--red); font-size:12px; cursor:pointer; padding:0; font-weight:600;}
   .empty-state{color:var(--muted); font-size:15px; padding:30px 0;}
@@ -2433,8 +2440,8 @@ document.querySelectorAll('.home-tile[data-tab]').forEach(btn=>{
 document.getElementById('brandHome').addEventListener('click', ()=> switchTab('overview'));
 
 // Open whatever tab the URL points at, and follow back/forward.
-function tabFromHash(){ return (location.hash || '').replace('#','') || 'overview'; }
-window.addEventListener('hashchange', ()=> switchTab(tabFromHash(), { fromHash:true }));
+function tabFromHash(){ return (location.hash || '').replace('#','').split('/')[0] || 'overview'; }
+window.addEventListener('hashchange', ()=>{ switchTab(tabFromHash(), { fromHash:true }); openPostFromHash(); });
 if(tabFromHash() !== 'overview') switchTab(tabFromHash(), { fromHash:true });
 
 // ---------- SPLASH ----------
@@ -2600,6 +2607,28 @@ function renderLineupBlocks(escaped){
   });
 }
 
+// URL-safe id for a post, used for #blog/<slug> deep links.
+function postSlug(p){
+  return String(p.title || 'post').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+
+// Open a post from the hash: expand it and scroll it into view.
+function openPostFromHash(){
+  const parts = (location.hash || '').replace('#','').split('/');
+  if(parts[0] !== 'blog' || !parts[1]) return;
+  const el = document.getElementById('post-' + parts[1]);
+  if(!el) return;
+  const bodyEl = el.querySelector('.post-body');
+  if(bodyEl && bodyEl.classList.contains('truncated')){
+    bodyEl.classList.remove('truncated');
+    bodyEl.classList.add('expanded');
+    const btn = el.querySelector('.post-readmore');
+    if(btn) btn.textContent = 'Show less';
+  }
+  el.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
 function renderPosts(posts){
   if(!posts.length){
     postsList.innerHTML = '<div class="empty-state">No posts yet.</div>';
@@ -2610,17 +2639,37 @@ function renderPosts(posts){
     const escaped = escapeHTML(p.body || '');
     const isLong = escaped.length > 380;
     const body = renderLineupBlocks(renderRosterBlocks(renderHeadings(escaped)));
+    const slug = postSlug(p);
     return `
-    <div class="post">
+    <div class="post" id="post-${slug}" data-slug="${slug}">
       ${p.type ? `<div class="post-type">${escapeHTML(p.type)}</div>` : ''}
       <h3>${escapeHTML(p.title || 'Untitled')}</h3>
       <div class="post-byline">${escapeHTML(p.author || 'Danny Garrison')} &nbsp;·&nbsp; ${escapeHTML(postDateLabel(p))}</div>
       ${p.image ? `<img class="post-image" src="${escapeHTML(p.image)}" alt="${escapeHTML(p.imageAlt || '')}" loading="lazy">` : ''}
       <div class="post-body ${isLong ? 'truncated' : ''}" id="body-${i}">${body}</div>
-      ${isLong ? `<div class="post-actions"><button class="post-readmore" data-key="${i}">Read more</button></div>` : ''}
+      <div class="post-actions">
+        ${isLong ? `<button class="post-readmore" data-key="${i}">Read more</button>` : ''}
+        <button class="post-share" data-slug="${slug}">Copy link</button>
+      </div>
     </div>
   `;
   }).join('');
+
+  document.querySelectorAll('.post-share').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const url = `${location.origin}${location.pathname}#blog/${e.target.dataset.slug}`;
+      try{
+        await navigator.clipboard.writeText(url);
+        e.target.textContent = 'Link copied';
+      }catch(err){
+        // Clipboard needs https and a user gesture — fall back to the share sheet.
+        if(navigator.share){ navigator.share({ url }); return; }
+        prompt('Copy this link:', url);
+        return;
+      }
+      setTimeout(()=>{ e.target.textContent = 'Copy link'; }, 1800);
+    });
+  });
 
   document.querySelectorAll('.post-readmore').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
@@ -2631,6 +2680,9 @@ function renderPosts(posts){
       e.target.textContent = expanded ? 'Show less' : 'Read more';
     });
   });
+
+  // Posts arrive async, so a #blog/<slug> link can only be resolved now.
+  openPostFromHash();
 }
 
 async function loadPosts(){

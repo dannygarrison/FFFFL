@@ -2442,7 +2442,6 @@ document.getElementById('brandHome').addEventListener('click', ()=> switchTab('o
 // Open whatever tab the URL points at, and follow back/forward.
 function tabFromHash(){ return (location.hash || '').replace('#','').split('/')[0] || 'overview'; }
 window.addEventListener('hashchange', ()=>{ switchTab(tabFromHash(), { fromHash:true }); openPostFromHash(); });
-if(tabFromHash() !== 'overview') switchTab(tabFromHash(), { fromHash:true });
 
 // ---------- SPLASH ----------
 // The site opens on a near-full-page shield. Scrolling toward the page cards shrinks
@@ -3894,6 +3893,9 @@ loadPosts();
   updateScore();
 })();
 
+
+// Runs last: switchTab reads state declared further down this file.
+if(tabFromHash() !== 'overview') switchTab(tabFromHash(), { fromHash:true });
 </script>
 
 </body>

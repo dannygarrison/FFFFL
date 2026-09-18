@@ -15,7 +15,7 @@
 <meta property="og:image" content="https://ffffleague.com/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="FFFFL wordmark">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="FFFFL">
@@ -1222,6 +1222,22 @@ function podiumRowHTML(row){
 
 // Full season standings (W-L-T, PF, PA), keyed by year, in final-standings order
 const seasonStandings = {
+  2026: [
+    {team:"Rox City B***ch", record:"1-0-0", pf:125.60, pa:109.80},
+    {team:"Saquonda foreva", record:"1-0-0", pf:123.70, pa:101.14},
+    {team:"Live, laugh, love football", record:"1-0-0", pf:112.06, pa:86.76},
+    {team:"The 300 lb'ers", record:"0-1-0", pf:109.80, pa:125.60},
+    {team:"Teardrops on my Lamar", record:"1-0-0", pf:107.70, pa:84.02},
+    {team:"Athletic Supporters", record:"1-0-0", pf:107.06, pa:82.06},
+    {team:"The Boo Crew", record:"0-1-0", pf:101.14, pa:123.70},
+    {team:"Team QCC", record:"1-0-0", pf:92.10, pa:90.92},
+    {team:"JK boys", record:"0-1-0", pf:90.92, pa:92.10},
+    {team:"Fily Special", record:"1-0-0", pf:86.86, pa:81.76},
+    {team:"TD Hounds", record:"0-1-0", pf:86.76, pa:112.06},
+    {team:"Old Bay Buccaneers", record:"0-1-0", pf:84.02, pa:107.70},
+    {team:"Illegal Motion", record:"0-1-0", pf:82.06, pa:107.06},
+    {team:"Sacramento Sneakerheads", record:"0-1-0", pf:81.76, pa:86.86},
+  ],
   2025: [
     {team:"Fily Special", record:"9-5-0", pf:1283.18, pa:1220.20},
     {team:"JK boys", record:"9-5-0", pf:1316.92, pa:1264.58},
@@ -1578,6 +1594,13 @@ const rivalryGames = [
 // Regular-season head-to-head: { year, week, a, scoreA, b, scoreB } with a/b as
 // manager keys. Empty until the weekly results are loaded.
 const regularSeasonMeetings = [
+  { year:2026, week:1, a:"Ken & Larry", scoreA:107.06, b:"Andrew", scoreB:82.06 },
+  { year:2026, week:1, a:"Darren", scoreA:84.02, b:"Tricia & Jeff", scoreB:107.70 },
+  { year:2026, week:1, a:"Kevin", scoreA:123.70, b:"Ryan", scoreB:101.14 },
+  { year:2026, week:1, a:"Danny", scoreA:86.76, b:"Jess", scoreB:112.06 },
+  { year:2026, week:1, a:"Jake", scoreA:86.86, b:"Mark", scoreB:81.76 },
+  { year:2026, week:1, a:"Jon", scoreA:90.92, b:"Team QCC", scoreB:92.10 },
+  { year:2026, week:1, a:"Liz", scoreA:109.80, b:"Jared", scoreB:125.60 },
   // Weeks 1-14 of each season, from the ESPN league JSON. Postseason and
   // consolation games are excluded — the bracket data covers those.
   { year:2025, week:1, a:"Ken & Larry", scoreA:106.16, b:"Andrew", scoreB:97.82 },
@@ -2368,6 +2391,9 @@ function computeManagerFinishes(){
     bump(managerMap[`${year}|${aWon ? f.teamB : f.teamA}`], 'runnerUps', year);
   });
   Object.keys(seasonStandings).forEach(year=>{
+    // Only completed seasons have a bracket; skip an in-progress year so nobody
+    // picks up a last-place badge in week 1.
+    if(!playoffBrackets[year]) return;
     let worst = null;
     seasonStandings[year].forEach(r=>{
       const [w, l, t] = r.record.split('-').map(Number);
